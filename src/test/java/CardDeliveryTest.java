@@ -2,10 +2,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.openqa.selenium.Keys;
+
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+
 import static com.codeborne.selenide.Condition.*;
 import static com.codeborne.selenide.Selenide.*;
 
@@ -22,7 +24,7 @@ public class CardDeliveryTest {
             "Москва,4,Иванова Анна-Мария,+79649005050",
             "Москва,3,Иванова Алёна,+79649005050"
     })
-    public void shouldBeSuccessMessage(String city,int daysToAdd,String name, String phone) {
+    public void shouldBeSuccessMessage(String city, int daysToAdd, String name, String phone) {
         open("http://localhost:9999/");
         //Ввод в поле Город
         $("[data-test-id='city'] input").setValue(city);
@@ -32,7 +34,7 @@ public class CardDeliveryTest {
         $("[data-test-id='date'] input").sendKeys(Keys.DELETE); //Очистка поля Дата
         //Ввод в поле Дата
         //Сгенерированная дата
-        String data = date(daysToAdd,"dd.MM.yyyy");
+        String data = date(daysToAdd, "dd.MM.yyyy");
         $("[data-test-id='date'] input").setValue(data);
         //Ввод в поле Фамилия и Имя
         $("[data-test-id='name'] input").setValue(name);
@@ -51,7 +53,7 @@ public class CardDeliveryTest {
     }
 
     @Test
-    public void shouldBeSuccessMessageSetMoscowAndDateWeekInAdvance() {
+    public void shouldBeSuccessMessageSetMoscowAndDateMonthInAdvance() {
         open("http://localhost:9999/");
 
         //Выбор города через выпадающий список
@@ -59,14 +61,32 @@ public class CardDeliveryTest {
         $$(".menu-item").findBy(exactText("Москва")).shouldBe(visible).click(); //ищем Москва в списке
 
         //Выбор даты через календарь
-        String data = date(7,("dd.MM.yyyy"));//генерируем дату
+        String data = date(30, ("dd.MM.yyyy"));//генерируем дату
         LocalDate dataFormat = LocalDate.parse(data, DateTimeFormatter.ofPattern("dd.MM.yyyy")); //переформ. в LocalDate
-        int day = dataFormat.getDayOfMonth(); //получаем день
-        String monthYear = dataFormat.format(DateTimeFormatter
-                .ofPattern("MMMM yyyy", new Locale("ru"))); //получаем месяц на русском
+        int day = dataFormat.getDayOfMonth(); //получаем устанавливаемый день
         $("[data-test-id='date'] input").click();//кликаем по полю
-        while ($(".calendar__name").text().equals(monthYear)) { //пока месяц/год не совпадут, кликать вперед
-            $("[data-step='1']").click();
+        //Переключение на нужный месяц
+        if (LocalDate.now().getYear() < dataFormat.getYear()) {
+            int stepYear = dataFormat.getYear() - LocalDate.now().getYear();
+            for (int i = 0; i < stepYear; i++) {
+                $("[data-step='12']").click();
+            }
+            if (dataFormat.getMonthValue() > LocalDate.now().getMonthValue()) {
+                int stepMonthPlus = dataFormat.getMonthValue() - LocalDate.now().getMonthValue();
+                for (int i = 0; i < stepMonthPlus; i++) {
+                    $("[data-step='1']").click();
+                }
+            } else {
+                int stepMonthMinus = LocalDate.now().getMonthValue() - dataFormat.getMonthValue();
+                for (int i = 0; i < stepMonthMinus; i++) {
+                    $("[data-step='-1']").click();
+                }
+            }
+        } else {
+            int stepMonth = dataFormat.getMonthValue() - LocalDate.now().getMonthValue();
+            for (int i = 0; i < stepMonth; i++) {
+                $("[data-step='1']").click();
+            }
         }
         $$(".calendar__day").findBy(exactText(String.valueOf(day))).click();//выбрать день
 
